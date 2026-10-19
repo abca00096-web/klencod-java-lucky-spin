@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تطبيق عجلة الحظ المميز</title>
+    <!-- مكتبة Excel (xlsx) -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <!-- مكتبة PDF.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+    <!-- مكتبة المؤثرات الاحتفالية (Confetti) -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    
+    <style>
+        * {
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        body {
+            background-color: #f0f2f5;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        .container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 30px;
+            justify-content: center;
+            max-width: 1100px;
+            width: 100%;
+        }
+        .panel {
+            background: #fff;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            flex: 1;
+            min-width: 320px;
+        }
+        .wheel-container {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        canvas {
+            border-radius: 50%;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+        }
+        #pointer {
+            position: absolute;
+            top: 5px;
+            width: 0;
+            height: 0;
+            border-left: 15px solid transparent;
+            border-right: 15px solid transparent;
+            border-top: 30px solid #e74c3c;
+            z-index: 10;
+        }
+        textarea {
+            width: 100%;
+            height: 120px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            resize: vertical;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+        .btn {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 18px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background 0.2s;
+            width: 100%;
+            margin-bottom: 10px;
+        }
+        .btn:hover {
+            background-color: #45a049;
+        }
+        .btn-spin {
+            background-color: #e74c3c;
+            font-size: 18px;
+            margin-top: 15px;
+            width: 200px;
+        }
+        .btn-spin:hover {
+            background-color: #c0392b;
+        }
+        .file-input-group {
+            margin-top: 15px;
+            border-top: 1px solid #eee;
+            padding-top: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #555;
+        }
+        input[type="file"] {
+            margin-bottom: 10px;
+            width: 100%;
+        }
+        .winner-modal {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            text-align: center;
+            z-index: 100;
+        }
+        .winner-modal h2 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+        .winner-modal .name {
+            font-size: 24px;
+            color: #e74c3c;
+            font-weight: bold;
+        }
+        .overlay {
+            display: none;
+            position: fixed;
+            top:0; left:0; width:100%; height:100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 99;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>🎡 عجلة الحظ التفاعلية</h1>
+
+    <div class="container">
+        <!-- لوحة التحكم وإدخال البيانات -->
+        <div class="panel">
+            <h3>إضافة الأسماء</h3>
+            
+            <label for="namesText">إدخال نصي (كل اسم في سطر):</label>
+            <textarea id="namesText" placeholder="علي&#10;أحمد&#10;فاطمة&#10;سارة"></textarea>
+            <button class="btn" onclick="addTextNames()">إضافة الأسماء من النص</button>
+
+            <div class="file-input-group">
+                <label>استيراد من ملف Excel (XLSX / CSV):</label>
+                <input type="file" id="excelFile" accept=".xlsx, .xls, .csv" onchange="handleExcel(event)">
+            </div>
+
+            <div class="file-input-group">
+                <label>استيراد من ملف PDF:</label>
+                <input type="file" id="pdfFile" accept=".pdf" onchange="handlePDF(event)">
+            </div>
+
+            <div style="margin-top: 15px;">
+                <h4>القائمة الحالية (<span id="count">0</span> أسماء):</h4>
+                <button class="btn" style="background-color: #7f8c8d;" onclick="clearNames()">تفريغ القائمة</button>
+            </div>
+        </div>
+
+        <!-- لوحة عجلة الحظ -->
+        <div class="panel wheel-container">
+            <div id="pointer"></div>
+            <canvas id="wheel" width="400" height="400"></canvas>
+            <button class="btn btn-spin" id="spinBtn" onclick="spinWheel()">تدوير العجلة!</button>
+        </div>
+    </div>
+
+    <!-- نافذة إعلان الفائز -->
+    <div class="overlay" id="overlay" onclick="closeModal()"></div>
+    <div class="winner-modal" id="winnerModal">
+        <h2>🎉 مبروك للفائز! 🎉</h2>
+        <div class="name" id="winnerName">...</div>
+        <br><br>
+        <button class="btn" onclick="closeModal()">إغلاق</button>
+    </div>
+
+    <script>
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+
+        let names = ["أحمد", "مريم", "محمد", "سارة", "علي", "نور"];
+        const canvas = document.getElementById('wheel');
+        const ctx = canvas.getContext('2d');
+        let currentAngle = 0;
+        let isSpinning = false;
+
+        // ألوان العجلة
+        const colors = [
+            '#f39c12', '#e74c3c', '#9b59b6', '#3498db', 
+            '#2ecc71', '#1abc9c', '#e67e22', '#d35400'
+        ];
+
+        function drawWheel() {
+            const numSegments = names.length;
+            const arcSize = (2 * Math.PI) / (numSegments || 1);
+            const radius = canvas.width / 2;
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            if (numSegments === 0) {
+                ctx.beginPath();
+                ctx.arc(radius, radius, radius - 10, 0, 2 * Math.PI);
+                ctx.fillStyle = '#ccc';
+                ctx.fill();
+                ctx.fillStyle = '#666';
+                ctx.font = '18px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText('أضف أسماء للعجلة', radius, radius);
+                return;
+            }
+
+            for (let i = 0; i < numSegments; i++) {
+                const angle = currentAngle + i * arcSize;
+                ctx.beginPath();
+                ctx.arc(radius, radius, radius - 10, angle, angle + arcSize);
+                ctx.lineTo(radius, radius);
+                ctx.fillStyle = colors[i % colors.length];
+                ctx.fill();
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+                // كتابة الأسماء
+                ctx.save();
+                ctx.translate(radius, radius);
+                ctx.rotate(angle + arcSize / 2);
+                ctx.textAlign = 'right';
+                ctx.fillStyle = '#fff';
+                ctx.font = 'bold 16px Arial';
+                ctx.fillText(names[i], radius - 30, 5);
+                ctx.restore();
+            }
+            document.getElementById('count').innerText = names.length;
+        }
+
+        // تدوير العجلة
+        function spinWheel() {
+            if (isSpinning || names.length === 0) return;
+            isSpinning = true;
+
+            const spinAngle = Math.random() * 2000 + 3600; // زاوية دوران عشوائية
+            const spinDuration = 5000; // مدة الدوران بالمللي ثانية
+            const start = performance.now();
+
+            function animate(now) {
+                const elapsed = now - start;
+                const progress = Math.min(elapsed / spinDuration, 1);
+                
+                // دالة تخفيف السرعة التدريجية (Ease-Out)
+                const easeOut = 1 - Math.pow(1 - progress, 4);
+                
+                currentAngle = (easeOut * (spinAngle * Math.PI / 180)) % (2 * Math.PI);
+                drawWheel();
+
+                if (progress < 1) {
+                    requestAnimationFrame(animate);
+                } else {
+                    isSpinning = false;
+                    determineWinner();
+                }
+            }
+
+            requestAnimationFrame(animate);
+        }
+
+        // تحديد الفائز
+        function determineWinner() {
+            const numSegments = names.length;
+            const arcSize = (2 * Math.PI) / numSegments;
+            
+            // حساب القطاع الفائز بناءً على المؤشر العلوي (عند -90 درجة أو 3*PI/2)
+            let normalizedAngle = (1.5 * Math.PI - currentAngle) % (2 * Math.PI);
+            if (normalizedAngle < 0) normalizedAngle += 2 * Math.PI;
+
+            const winningIndex = Math.floor(normalizedAngle / arcSize);
+            const winner = names[winningIndex];
+
+            // إظهار النتائج
+            document.getElementById('winnerName').innerText = winner;
+            document.getElementById('winnerModal').style.display = 'block';
+            document.getElementById('overlay').style.display = 'block';
+            confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+        }
+
+        function closeModal() {
+            document.getElementById('winnerModal').style.display = 'none';
+            document.getElementById('overlay').style.display = 'none';
+        }
+
+        // إضافة من مربع النص
+        function addTextNames() {
+            const text = document.getElementById('namesText').value.trim();
+            if (!text) return;
+            const newNames = text.split('\n').map(n => n.trim()).filter(n => n !== '');
+            names = names.concat(newNames);
+            document.getElementById('namesText').value = '';
+            drawWheel();
+        }
+
+        // قراءة Excel
+        function handleExcel(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(evt) {
+                const data = new Uint8Array(evt.target.result);
+                const workbook = XLSX.read(data, {type: 'array'});
+                const firstSheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[firstSheetName];
+                const jsonData = XLSX.utils.sheet_to_json(worksheet, {header: 1});
+                
+                // أخذ العمود الأول كـ أسماء
+                const extractedNames = jsonData.map(row => row[0]).filter(val => val && String(val).trim() !== '');
+                if (extractedNames.length > 0) {
+                    names = names.concat(extractedNames);
+                    drawWheel();
+                    alert(`تمت إضافة ${extractedNames.length} اسم من ملف إكسل!`);
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        // قراءة PDF
+        async function handlePDF(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const arrayBuffer = await file.arrayBuffer();
+            const pdf = await pdfjsLib.getDocument({data: arrayBuffer}).promise;
+            let extractedText = '';
+
+            for (let i = 1; i <= pdf.numPages; i++) {
+                const page = await pdf.getPage(i);
+                const textContent = await page.getTextContent();
+                const pageText = textContent.items.map(item => item.str).join('\n');
+                extractedText += pageText + '\n';
+            }
+
+            const extractedNames = extractedText.split('\n').map(n => n.trim()).filter(n => n.length > 1);
+            if (extractedNames.length > 0) {
+                names = names.concat(extractedNames);
+                drawWheel();
+                alert(`تم استخراج ${extractedNames.length} اسم/سطر من ملف الـ PDF!`);
+            }
+        }
+
+        // تفريغ القائمة
+        function clearNames() {
+            names = [];
+            drawWheel();
+        }
+
+        // رسم العجلة لأول مرة عند التحميل
+        drawWheel();
+    </script>
+</body>
+</html>
