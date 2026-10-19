@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>لعبة تحدي وتوقع الوقت</title>
+    
+    <!-- 🟢 أيفونة التطبيق بصيغة PNG -->
+    <link rel="icon" type="image/png" href="icon.png">
+
+    <!-- استدعاء خط Cairo من Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        body {
+            font-family: 'Cairo', sans-serif;
+            background: #eef2f3;
+            text-align: center;
+            padding: 30px;
+            margin: 0;
+        }
+        .container {
+            max-width: 450px;
+            margin: auto;
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+        }
+        h2 {
+            color: #333;
+            font-weight: 700;
+        }
+        p {
+            color: #666;
+            font-size: 14px;
+        }
+        .target-box {
+            margin: 20px 0;
+        }
+        input {
+            padding: 10px;
+            font-size: 18px;
+            width: 100px;
+            text-align: center;
+            border-radius: 8px;
+            border: 1px solid #ccc;
+            font-family: 'Cairo', sans-serif;
+        }
+        .timer-display {
+            font-size: 48px;
+            font-weight: 700;
+            color: #2c3e50;
+            margin: 20px 0;
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 10px;
+            border: 2px dashed #cbd5e1;
+        }
+        button {
+            padding: 12px 25px;
+            font-size: 18px;
+            margin: 8px;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            font-family: 'Cairo', sans-serif;
+            transition: 0.3s;
+        }
+        .btn-start {
+            background: #27ae60;
+            color: white;
+        }
+        .btn-start:hover {
+            background: #219653;
+        }
+        .btn-stop {
+            background: #e74c3c;
+            color: white;
+        }
+        .btn-stop:hover {
+            background: #c0392b;
+        }
+        .result-box {
+            margin-top: 20px;
+            font-size: 20px;
+            font-weight: 600;
+            min-height: 50px;
+        }
+        .success { color: #27ae60; }
+        .fail { color: #d9534f; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h2>⏱️ لعبة تحدي الوقت</h2>
+        <p>اطلب من صديقك تحديد وقت (مثلاً 5 ثواني)، اضغط بدء وحاول إيقافه في الوقت المحدد تماماً!</p>
+
+        <div class="target-box">
+            <label for="targetInput">الوقت المستهدف (بالثواني):</label><br><br>
+            <input type="number" id="targetInput" value="5" min="1" max="60" step="1">
+        </div>
+
+        <div class="timer-display" id="timerDisplay">0.00</div>
+
+        <div>
+            <button class="btn-start" id="startBtn" onclick="startGame()">بدء التحدي 🚀</button>
+            <button class="btn-stop" id="stopBtn" onclick="stopGame()" disabled>إيقاف 🛑</button>
+        </div>
+
+        <div class="result-box" id="resultDisplay"></div>
+    </div>
+
+    <script>
+        let startTime;
+        let elapsedTime = 0;
+        let timerInterval;
+        let isRunning = false;
+
+        const timerDisplay = document.getElementById("
